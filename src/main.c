@@ -126,31 +126,6 @@ static void http_server_netconn_serve(struct netconn *conn)
                 netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
                 break;
             }
-            case 'P' : {
-                switch(buf[1]){
-                    case 'O' : {
-                        //POST
-                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-                        break;
-                    }
-                    case 'U' : {
-                        //PUT
-                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-                        break;
-                    }
-                    case 'A' : {
-                        //PATCH
-                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-                        break;
-                    }
-                }
-                break;
-            }
-            case 'D' : {
-                //DELETE
-                netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-                break;
-            }
             default : {
                 netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
                 break;
