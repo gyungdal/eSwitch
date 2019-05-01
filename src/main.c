@@ -16,11 +16,13 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
+#include <httpd/httpd.h>
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
+#include "tcpip_adapter.h"
 
 #define WIFI_SSID "Gyeongsik's Wi-Fi Network"
 #define WIFI_PASS "gyungdal"
@@ -113,103 +115,76 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static void http_get_task(void *pvParameters)
+void httpd_task(void *pvParameters)
 {
-    const struct addrinfo hints = {
-        .ai_family = AF_INET,
-        .ai_socktype = SOCK_STREAM,
+    struct netconn *client = NULL;
+    struct netconn *nc = netconn_new(NETCONN_TCP);
+    if (nc == NULL) {
+        printf("Failed to allocate socket.\n");
+        vTaskDelete(NULL);
+    }
+    netconn_bind(nc, IP_ADDR_ANY, 80);
+    netconn_listen(nc);
+    char buf[512];
+    const char *webpage = {
+        "HTTP/1.1 200 OK\r\n"
+        "Content-type: text/html\r\n\r\n"
+        "<html><head><title>HTTP Server</title>"
+        "<style> div.main {"
+        "font-family: Arial;"
+        "padding: 0.01em 16px;"
+        "box-shadow: 2px 2px 1px 1px #d2d2d2;"
+        "background-color: #f1f1f1;}"
+        "</style></head>"
+        "<body><div class='main'>"
+        "<h3>HTTP Server</h3>"
+        "<p>URL: %s</p>"
+        "<p>Uptime: %d seconds</p>"
+        "<p>Free heap: %d bytes</p>"
+        "<button onclick=\"location.href='/on'\" type='button'>"
+        "LED On</button></p>"
+        "<button onclick=\"location.href='/off'\" type='button'>"
+        "LED Off</button></p>"
+        "</div></body></html>"
     };
-    struct addrinfo *res;
-    struct in_addr *addr;
-    int s, r;
-    char recv_buf[64];
-    while (1)
-    {
-        /* Wait for the callback to set the CONNECTED_BIT in the
-           event group.
-        */
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-                            false, true, portMAX_DELAY);
-        ESP_LOGI(TAG, "Connected to AP");
+    while (1) {
+        err_t err = netconn_accept(nc, &client);
+        if (err == ERR_OK) {
+            struct netbuf *nb;
+            if ((err = netconn_recv(client, &nb)) == ERR_OK) {
+                void *data;
+                u16_t len;
+                netbuf_data(nb, &data, &len);
+                /* check for a GET request */
+                if (!strncmp(data, "GET ", 4)) {
+                    char uri[16];
+                    const int max_uri_len = 16;
+                    char *sp1, *sp2;
+                    /* extract URI */
+                    sp1 = data + 4;
+                    sp2 = memchr(sp1, ' ', max_uri_len);
+                    int len = sp2 - sp1;
+                    memcpy(uri, sp1, len);
+                    uri[len] = '\0';
+                    printf("uri: %s\n", uri);
+                    
+                    if (!strncmp(uri, "/on", max_uri_len)){
 
-        int err = getaddrinfo(WEB_SERVER, "80", &hints, &res);
+                    }else if (!strncmp(uri, "/off", max_uri_len)){
 
-        if (err != 0 || res == NULL)
-        {
-            ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        /* Code to print the resolved IP.
-
-           Note: inet_ntoa is non-reentrant, look at ipaddr_ntoa_r for "real" code */
-        addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
-        ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", inet_ntoa(*addr));
-
-        s = socket(res->ai_family, res->ai_socktype, 0);
-        if (s < 0)
-        {
-            ESP_LOGE(TAG, "... Failed to allocate socket.");
-            freeaddrinfo(res);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "... allocated socket");
-
-        if (connect(s, res->ai_addr, res->ai_addrlen) != 0)
-        {
-            ESP_LOGE(TAG, "... socket connect failed errno=%d", errno);
-            close(s);
-            freeaddrinfo(res);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        ESP_LOGI(TAG, "... connected");
-        freeaddrinfo(res);
-
-        if (write(s, REQUEST, strlen(REQUEST)) < 0)
-        {
-            ESP_LOGE(TAG, "... socket send failed");
-            close(s);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "... socket send success");
-
-        struct timeval receiving_timeout;
-        receiving_timeout.tv_sec = 5;
-        receiving_timeout.tv_usec = 0;
-        if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &receiving_timeout,
-                       sizeof(receiving_timeout)) < 0)
-        {
-            ESP_LOGE(TAG, "... failed to set socket receiving timeout");
-            close(s);
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "... set socket receiving timeout success");
-
-        /* Read HTTP response */
-        do
-        {
-            bzero(recv_buf, sizeof(recv_buf));
-            r = read(s, recv_buf, sizeof(recv_buf) - 1);
-            for (int i = 0; i < r; i++)
-            {
-                putchar(recv_buf[i]);
+                    }
+                    snprintf(buf, sizeof(buf), webpage,
+                            uri,
+                            xTaskGetTickCount() * portTICK_PERIOD_MS / 1000,
+                            (int) xPortGetFreeHeapSize());
+                    netconn_write(client, buf, strlen(buf), NETCONN_COPY);
+                }
             }
-        } while (r > 0);
-
-        ESP_LOGI(TAG, "... done reading from socket. Last read return=%d errno=%d\r\n", r, errno);
-        close(s);
-        for (int countdown = 10; countdown >= 0; countdown--)
-        {
-            ESP_LOGI(TAG, "%d... ", countdown);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            netbuf_delete(nb);
         }
-        ESP_LOGI(TAG, "Starting again!");
+        printf("Closing connection\n");
+        netconn_close(client);
+        netconn_delete(client);
     }
 }
 
@@ -218,7 +193,6 @@ void app_main()
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
     
-
     for(int i = 0;i<sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]);i++){
         gpio_pad_select_gpio(GPIO_PINS[i]);
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
