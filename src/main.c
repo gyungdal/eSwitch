@@ -106,8 +106,7 @@ static void http_server_netconn_serve(struct netconn *conn)
    We assume the request (the part we care about) is in one netbuf */
     err = netconn_recv(conn, &inbuf);
 
-    if (err == ERR_OK)
-    {
+    if (err == ERR_OK){
         netbuf_data(inbuf, (void **)&buf, &buflen);
         // find the first and seconds space (those delimt the url)
         start = strstr(buf, " ");
@@ -117,39 +116,45 @@ static void http_server_netconn_serve(struct netconn *conn)
         memcpy(payload, start, stop - start);
         payload[stop - start] = '\0';
 
-        /* For now  only GET results in a valid respons */
-        if (strncmp(buf, "GET /", 5) == 0)
-        {
-            printf("GET = '%s' \n", payload);
-            /* send HTTP Ok to client */
-            netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-            /* send "hello world to client" */
-            netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
-        }
-        else if (strncmp(buf, "POST /", 6) == 0)
-        {
-            /* send '501 Not implementd' reply  */
-            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-        }
-        else if (strncmp(buf, "PUT /", 5) == 0)
-        {
-            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-        }
-        else if (strncmp(buf, "PATCH /", 7) == 0)
-        {
-            /* send '501 Not implementd' reply  */
-            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-        }
-        else if (strncmp(buf, "DELETE /", 8) == 0)
-        {
-            /* send '501 Not implementd' reply  */
-            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
-        }
-        else
-        {
-            /* 	Any unrecognized verb will automatically 
-				result in '501 Not implementd' reply */
-            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        switch(buf[0]){
+            case 'G' : {
+                //GET
+                printf("GET = '%s' \n", payload);
+                /* send HTTP Ok to client */
+                netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
+                /* send "hello world to client" */
+                netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
+                break;
+            }
+            case 'P' : {
+                switch(buf[1]){
+                    case 'O' : {
+                        //POST
+                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+                        break;
+                    }
+                    case 'U' : {
+                        //PUT
+                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+                        break;
+                    }
+                    case 'A' : {
+                        //PATCH
+                        netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+                        break;
+                    }
+                }
+                break;
+            }
+            case 'D' : {
+                //DELETE
+                netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+                break;
+            }
+            default : {
+                netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+                break;
+            }
         }
         free(payload);
     }
