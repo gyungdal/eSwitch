@@ -18,6 +18,7 @@
 #include "tcpip_adapter.h"
 
 #include "../include/utils.hpp"
+#include "../include/type.hpp"
 
 #define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
 #define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
@@ -29,11 +30,6 @@
 
 #define WIFI_SSID "Gyeongsik's Wi-Fi Network"
 #define WIFI_PASS "gyungdal"
-
-typedef enum _gpio_status_t {
-    LOW = 0,
-    HIGH = 1
-} gpio_status_t;
 
 const gpio_num_t GPIO_PINS[] = {GPIO_NUM_21, GPIO_NUM_22};
 
@@ -109,6 +105,11 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
+                switch(Hash(payload)){
+                    case Hash("/") : {
+                        break;
+                    }
+                }
                 netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
                 break;
             }
