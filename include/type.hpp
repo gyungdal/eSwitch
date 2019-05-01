@@ -1,6 +1,8 @@
 #ifndef __TYPE_HPP__
 #define __TYPE_HPP__
 
+#include "lwip/api.h"
+
 typedef enum _gpio_status_t {
     LOW = 0,
     HIGH = 1

@@ -105,11 +105,7 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-                switch(Hash(payload)){
-                    case Hash("/") : {
-                        break;
-                    }
-                }
+                
                 netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
                 break;
             }
