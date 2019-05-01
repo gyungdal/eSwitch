@@ -48,7 +48,8 @@ static EventGroupHandle_t wifi_event_group;
 #define delay(ms) (vTaskDelay(ms / portTICK_RATE_MS))
 
 const int CONNECTED_BIT = BIT0;
-static const char *TAG = "example";
+
+static const char *TAG = "eSwitch";
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
