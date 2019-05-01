@@ -17,7 +17,7 @@
 #include "lwip/dns.h"
 #include "tcpip_adapter.h"
 
-#include "../include/utils.h"
+#include "../include/utils.hpp"
 
 #define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
 #define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
