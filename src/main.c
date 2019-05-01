@@ -50,9 +50,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
         case SYSTEM_EVENT_STA_GOT_IP:
             xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
             #if DEBUG_ENABLED
-                ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.ip));
-                ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.netmask));
-                ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.gw));
+                ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.ip));
+                ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.netmask));
+                ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.gw));
             #endif
             break;
         case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -78,7 +78,7 @@ static void initialise_wifi(void) {
             .password = WIFI_PASS,
         },
     };
-    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...\n", wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -124,7 +124,7 @@ static void http_server(void *pvParameters) {
                 (pvParameters != NULL) 
                 ? (uint16_t)pvParameters 
                 : 80);
-    ESP_LOGI(TAG, "[INFO] Port Open : %d\n", port);
+    ESP_LOGI(TAG, "[INFO] Port Open : %d", port);
     struct netconn *conn, *newconn;
     err_t err;
     conn = netconn_new(NETCONN_TCP);
