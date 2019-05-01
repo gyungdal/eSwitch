@@ -119,10 +119,8 @@ static void http_server_netconn_serve(struct netconn *conn)
         switch(buf[0]){
             case 'G' : {
                 //GET
-                printf("GET = '%s' \n", payload);
-                /* send HTTP Ok to client */
+                ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-                /* send "hello world to client" */
                 netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
                 break;
             }
