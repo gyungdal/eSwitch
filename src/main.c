@@ -25,6 +25,12 @@
 #define WIFI_SSID "Gyeongsik's Wi-Fi Network"
 #define WIFI_PASS "gyungdal"
 
+typedef enum _gpio_status_t{
+    LOW = 0,
+    HIGH = 1
+} gpio_status_t;
+
+const gpio_num_t GPIO_PINS[] = {GPIO_NUM_21, GPIO_NUM_22};
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t wifi_event_group;
 
@@ -211,5 +217,12 @@ void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
+    
+
+    for(int i = 0;i<sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]);i++){
+        gpio_pad_select_gpio(GPIO_PINS[i]);
+        gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_PINS[i], HIGH);
+    }
     xTaskCreate(&http_get_task, "http_get_task", 4096, NULL, 5, NULL);
 }
