@@ -1,11 +1,3 @@
-/* HTTP GET Example using plain POSIX sockets
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,14 +27,13 @@
 #define WIFI_SSID "Gyeongsik's Wi-Fi Network"
 #define WIFI_PASS "gyungdal"
 
-typedef enum _gpio_status_t
-{
+typedef enum _gpio_status_t {
     LOW = 0,
     HIGH = 1
 } gpio_status_t;
 
 const gpio_num_t GPIO_PINS[] = {GPIO_NUM_21, GPIO_NUM_22};
-/* FreeRTOS event group to signal when we are connected & ready to make a request */
+
 static EventGroupHandle_t wifi_event_group;
 
 #define delay(ms) (vTaskDelay(ms / portTICK_RATE_MS))
@@ -51,33 +42,30 @@ const int CONNECTED_BIT = BIT0;
 
 static const char *TAG = "eSwitch";
 
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-    switch (event->event_id)
-    {
-    case SYSTEM_EVENT_STA_START:
-        esp_wifi_connect();
-        break;
-    case SYSTEM_EVENT_STA_GOT_IP:
-        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-#if DEBUG_ENABLED
-        ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.ip));
-        ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.netmask));
-        ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.gw));
-#endif
-        break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-        esp_wifi_connect();
-        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-        break;
-    default:
-        break;
+static esp_err_t event_handler(void *ctx, system_event_t *event) {
+    switch (event->event_id){
+        case SYSTEM_EVENT_STA_START:
+            esp_wifi_connect();
+            break;
+        case SYSTEM_EVENT_STA_GOT_IP:
+            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+            #if DEBUG_ENABLED
+                ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.ip));
+                ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.netmask));
+                ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.gw));
+            #endif
+            break;
+        case SYSTEM_EVENT_STA_DISCONNECTED:
+            esp_wifi_connect();
+            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+            break;
+        default:
+            break;
     }
     return ESP_OK;
 }
 
-static void initialise_wifi(void)
-{
+static void initialise_wifi(void) {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
@@ -96,28 +84,23 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static void http_server_netconn_serve(struct netconn *conn)
-{
+static void http_server_netconn_serve(struct netconn *conn) {
     struct netbuf *inbuf;
     char *buf, *payload, *start, *stop;
     u16_t buflen;
     err_t err;
 
-    /* Read the data from the port, blocking if nothing yet there.
-   We assume the request (the part we care about) is in one netbuf */
     err = netconn_recv(conn, &inbuf);
 
     if (err == ERR_OK){
         netbuf_data(inbuf, (void **)&buf, &buflen);
-        // find the first and seconds space (those delimt the url)
         start = strstr(buf, " ");
         stop = strstr(start + 1, " ");
-        // allocate memory for the payload
         payload = (char *)malloc(stop - start + 1);
         memcpy(payload, start, stop - start);
         payload[stop - start] = '\0';
 
-        switch(buf[0]){
+        switch(buf[0]) {
             case 'G' : {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
@@ -132,13 +115,11 @@ static void http_server_netconn_serve(struct netconn *conn)
         }
         free(payload);
     }
-    /* Close the connection (server closes in HTTP) and clean up after ourself */
     netconn_close(conn);
     netbuf_delete(inbuf);
 }
 
-static void http_server(void *pvParameters)
-{
+static void http_server(void *pvParameters) {
     const uint16_t port = (uint16_t)(
                 (pvParameters != NULL) 
                 ? (uint16_t)pvParameters 
@@ -149,8 +130,7 @@ static void http_server(void *pvParameters)
     conn = netconn_new(NETCONN_TCP);
     netconn_bind(conn, NULL, port);
     netconn_listen(conn);
-    do
-    {
+    do {
         err = netconn_accept(conn, &newconn);
         if (err == ERR_OK)
         {
@@ -162,13 +142,11 @@ static void http_server(void *pvParameters)
     netconn_delete(conn);
 }
 
-void app_main()
-{
+void app_main() {
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
 
-    for (int i = 0; i < sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]); i++)
-    {
+    for (int i = 0; i < sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]); i++){
         gpio_pad_select_gpio(GPIO_PINS[i]);
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_PINS[i], HIGH);
