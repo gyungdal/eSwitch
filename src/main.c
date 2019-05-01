@@ -16,7 +16,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include <httpd/httpd.h>
+#include "lwip/api.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -24,10 +24,19 @@
 #include "lwip/dns.h"
 #include "tcpip_adapter.h"
 
+#define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
+#define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
+#define HDR_204 "HTTP/1.1 204 No Content\r\nContent-type: text/html\r\n\r\n"
+#define HDR_404 "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n"
+#define HDR_405 "HTTP/1.1 405 Method not allowed\r\nContent-type: text/html\r\n\r\n"
+#define HDR_409 "HTTP/1.1 409 Conflict\r\nContent-type: text/html\r\n\r\n"
+#define HDR_501 "HTTP/1.1 501 Not Implemented\r\nContent-type: text/html\r\n\r\n"
+
 #define WIFI_SSID "Gyeongsik's Wi-Fi Network"
 #define WIFI_PASS "gyungdal"
 
-typedef enum _gpio_status_t{
+typedef enum _gpio_status_t
+{
     LOW = 0,
     HIGH = 1
 } gpio_status_t;
@@ -38,37 +47,8 @@ static EventGroupHandle_t wifi_event_group;
 
 #define delay(ms) (vTaskDelay(ms / portTICK_RATE_MS))
 
-char *json_unformatted;
-const static char http_html_hdr[] =
-    "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n";
-const static char http_index_hml[] = "<!DOCTYPE html>"
-                                     "<html>\n"
-                                     "<head>\n"
-                                     "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-                                     "  <style type=\"text/css\">\n"
-                                     "    html, body, iframe { margin: 0; padding: 0; height: 100%; }\n"
-                                     "    iframe { display: block; width: 100%; border: none; }\n"
-                                     "  </style>\n"
-                                     "<title>HELLO ESP32</title>\n"
-                                     "</head>\n"
-                                     "<body>\n"
-                                     "<h1>Hello World, from ESP32!</h1>\n"
-                                     "</body>\n"
-                                     "</html>\n";
-
 const int CONNECTED_BIT = BIT0;
-
-/* Constants that aren't configurable in menuconfig */
-#define WEB_SERVER "google.com"
-#define WEB_PORT 80
-#define WEB_URL "http://google.com/"
-
 static const char *TAG = "example";
-
-static const char *REQUEST = "GET " WEB_URL " HTTP/1.0\r\n"
-                             "Host: " WEB_SERVER "\r\n"
-                             "User-Agent: esp-idf/1.0 esp32\r\n"
-                             "\r\n";
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -80,9 +60,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     case SYSTEM_EVENT_STA_GOT_IP:
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
 #if DEBUG_ENABLED
-        ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.ip));
-        ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.netmask));
-        ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d", IP2STR(&event->event_info.got_ip.ip_info.gw));
+        ESP_LOGI(TAG, "[CONNECT] IP : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.ip));
+        ESP_LOGI(TAG, "[CONNECT] Netmask : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.netmask));
+        ESP_LOGI(TAG, "[CONNECT] Gateway : %d.%d.%d.%d\n", IP2STR(&event->event_info.got_ip.ip_info.gw));
 #endif
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -109,94 +89,110 @@ static void initialise_wifi(void)
             .password = WIFI_PASS,
         },
     };
-    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...\n", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-void httpd_task(void *pvParameters)
+static void http_server_netconn_serve(struct netconn *conn)
 {
-    struct netconn *client = NULL;
-    struct netconn *nc = netconn_new(NETCONN_TCP);
-    if (nc == NULL) {
-        printf("Failed to allocate socket.\n");
-        vTaskDelete(NULL);
-    }
-    netconn_bind(nc, IP_ADDR_ANY, 80);
-    netconn_listen(nc);
-    char buf[512];
-    const char *webpage = {
-        "HTTP/1.1 200 OK\r\n"
-        "Content-type: text/html\r\n\r\n"
-        "<html><head><title>HTTP Server</title>"
-        "<style> div.main {"
-        "font-family: Arial;"
-        "padding: 0.01em 16px;"
-        "box-shadow: 2px 2px 1px 1px #d2d2d2;"
-        "background-color: #f1f1f1;}"
-        "</style></head>"
-        "<body><div class='main'>"
-        "<h3>HTTP Server</h3>"
-        "<p>URL: %s</p>"
-        "<p>Uptime: %d seconds</p>"
-        "<p>Free heap: %d bytes</p>"
-        "<button onclick=\"location.href='/on'\" type='button'>"
-        "LED On</button></p>"
-        "<button onclick=\"location.href='/off'\" type='button'>"
-        "LED Off</button></p>"
-        "</div></body></html>"
-    };
-    while (1) {
-        err_t err = netconn_accept(nc, &client);
-        if (err == ERR_OK) {
-            struct netbuf *nb;
-            if ((err = netconn_recv(client, &nb)) == ERR_OK) {
-                void *data;
-                u16_t len;
-                netbuf_data(nb, &data, &len);
-                /* check for a GET request */
-                if (!strncmp(data, "GET ", 4)) {
-                    char uri[16];
-                    const int max_uri_len = 16;
-                    char *sp1, *sp2;
-                    /* extract URI */
-                    sp1 = data + 4;
-                    sp2 = memchr(sp1, ' ', max_uri_len);
-                    int len = sp2 - sp1;
-                    memcpy(uri, sp1, len);
-                    uri[len] = '\0';
-                    printf("uri: %s\n", uri);
-                    
-                    if (!strncmp(uri, "/on", max_uri_len)){
+    struct netbuf *inbuf;
+    char *buf, *payload, *start, *stop;
+    u16_t buflen;
+    err_t err;
 
-                    }else if (!strncmp(uri, "/off", max_uri_len)){
+    /* Read the data from the port, blocking if nothing yet there.
+   We assume the request (the part we care about) is in one netbuf */
+    err = netconn_recv(conn, &inbuf);
 
-                    }
-                    snprintf(buf, sizeof(buf), webpage,
-                            uri,
-                            xTaskGetTickCount() * portTICK_PERIOD_MS / 1000,
-                            (int) xPortGetFreeHeapSize());
-                    netconn_write(client, buf, strlen(buf), NETCONN_COPY);
-                }
-            }
-            netbuf_delete(nb);
+    if (err == ERR_OK)
+    {
+        netbuf_data(inbuf, (void **)&buf, &buflen);
+        // find the first and seconds space (those delimt the url)
+        start = strstr(buf, " ");
+        stop = strstr(start + 1, " ");
+        // allocate memory for the payload
+        payload = (char *)malloc(stop - start + 1);
+        memcpy(payload, start, stop - start);
+        payload[stop - start] = '\0';
+
+        /* For now  only GET results in a valid respons */
+        if (strncmp(buf, "GET /", 5) == 0)
+        {
+            printf("GET = '%s' \n", payload);
+            /* send HTTP Ok to client */
+            netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
+            /* send "hello world to client" */
+            netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
         }
-        printf("Closing connection\n");
-        netconn_close(client);
-        netconn_delete(client);
+        else if (strncmp(buf, "POST /", 6) == 0)
+        {
+            /* send '501 Not implementd' reply  */
+            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        }
+        else if (strncmp(buf, "PUT /", 5) == 0)
+        {
+            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        }
+        else if (strncmp(buf, "PATCH /", 7) == 0)
+        {
+            /* send '501 Not implementd' reply  */
+            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        }
+        else if (strncmp(buf, "DELETE /", 8) == 0)
+        {
+            /* send '501 Not implementd' reply  */
+            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        }
+        else
+        {
+            /* 	Any unrecognized verb will automatically 
+				result in '501 Not implementd' reply */
+            netconn_write(conn, HDR_501, sizeof(HDR_501) - 1, NETCONN_NOCOPY);
+        }
+        free(payload);
     }
+    /* Close the connection (server closes in HTTP) and clean up after ourself */
+    netconn_close(conn);
+    netbuf_delete(inbuf);
+}
+
+static void http_server(void *pvParameters)
+{
+    const uint16_t port = (uint16_t)(
+                (pvParameters != NULL) 
+                ? (uint16_t)pvParameters 
+                : 80);
+    ESP_LOGI(TAG, "[INFO] Port Open : %d\n", port);
+    struct netconn *conn, *newconn;
+    err_t err;
+    conn = netconn_new(NETCONN_TCP);
+    netconn_bind(conn, NULL, port);
+    netconn_listen(conn);
+    do
+    {
+        err = netconn_accept(conn, &newconn);
+        if (err == ERR_OK)
+        {
+            http_server_netconn_serve(newconn);
+            netconn_delete(newconn);
+        }
+    } while (err == ERR_OK);
+    netconn_close(conn);
+    netconn_delete(conn);
 }
 
 void app_main()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
-    
-    for(int i = 0;i<sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]);i++){
+
+    for (int i = 0; i < sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]); i++)
+    {
         gpio_pad_select_gpio(GPIO_PINS[i]);
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
-    xTaskCreate(&http_get_task, "http_get_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
 }
