@@ -18,7 +18,7 @@ url_handler_t get_handlers[] = {
 
 url_handler_t* findByUrl(url_handler_t* handlers, char* url){
     for(size_t i = 0;i<sizeof(handlers) / sizeof(handlers[0]);i++){
-        if(!strncmp(url, handlers[i].url, sizeof(url))){
+        if(strcmp(url, handlers[i].url) == 0){
             return &handlers[i];
         }
     }
