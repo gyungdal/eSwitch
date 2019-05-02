@@ -2,8 +2,10 @@
 #define __HANDLER_C__
 
 #include <string.h>
-#include "./type.h"
 #include <lwip/err.h>
+
+#include "./type.h"
+#include "./config.h"
 
 static void get_root_handler(struct netconn* conn, char* url, char* payload){
     const char* body = "HELLO WORLD!\0";
