@@ -3,10 +3,8 @@
 
 #include "lwip/api.h"
 
-typedef enum _gpio_status_t {
-    LOW = 0,
-    HIGH = 1
-} gpio_status_t;
+const uint32_t HIGH = 1;
+const uint32_t LOW = 0;
 
 typedef struct _url_handler_t {
     char* url;
