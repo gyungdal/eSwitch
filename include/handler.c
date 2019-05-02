@@ -1,22 +1,23 @@
-#ifndef __HANDLER_CPP__
-#define __HANDLER_CPP__
+#ifndef __HANDLER_C__
+#define __HANDLER_C__
 
 #include <string.h>
-#include "./type.hpp"
+#include "./type.h"
+#include <lwip/err.h>
 
 static void get_root_handler(struct netconn* conn, char* url, char* payload){
     const char* body = "HELLO WORLD!\0";
     netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
 }
 
-url_handler_t get_handlers[] = {
+static url_handler_t get_handlers[] = {
     { 
         .url = "/",
         .handler = get_root_handler
     }
 };
 
-err_t executeHandlerByUrl(url_handler_t* handlers, struct netconn* conn, char* payload){
+err_t executeGetHandlerByUrl(struct netconn* conn, char* payload){
     char *start, *middle, *url;
     start = payload;
     if(strstr(payload, "?") != NULL){
@@ -31,9 +32,9 @@ err_t executeHandlerByUrl(url_handler_t* handlers, struct netconn* conn, char* p
         url = (char*)malloc(len * sizeof(char));
         memcpy(url, payload, len);
     }
-    for(size_t i = 0;i<sizeof(handlers) / sizeof(handlers[0]);i++){
-        if(strcmp(url, handlers[i].url) == 0){
-            handlers[i].handler(conn, url, NULL);
+    for(size_t i = 0;i < sizeof(get_handlers) / sizeof(get_handlers[0]);i++){
+        if(strncmp(url, get_handlers[i].url, strlen(url)) == 0){
+            get_handlers[i].handler(conn, url, NULL);
         }
     }
     free(url);

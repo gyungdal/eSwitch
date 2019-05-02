@@ -17,9 +17,9 @@
 #include "lwip/dns.h"
 #include "tcpip_adapter.h"
 
-#include "../include/utils.hpp"
-#include "../include/type.hpp"
-#include "../include/handler.cpp"
+#include "../include/utils.h"
+#include "../include/type.h"
+#include "../include/handler.c"
 
 #define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
 #define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
@@ -93,23 +93,24 @@ static void http_server_netconn_serve(struct netconn *conn) {
 
     err = netconn_recv(conn, &inbuf);
 
-    url = payload = NULL;
+    payload = NULL;
     if (err == ERR_OK){
         netbuf_data(inbuf, (void **)&buf, &buflen);
-        start = strstr(buf, " ");
+        start = strstr(buf, " ") + 1;
         stop = strstr(start + 1, " ");
 
         payload = (char *)malloc(stop - start + 1);
         memcpy(payload, start, stop - start);
             
         payload[stop - start] = '\0';
-
+        
         switch(buf[0]) {
             case 'G' : {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
+                ESP_LOGI(TAG, "[CLIENT GET LENGTH] %d", strlen(payload));
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-                executeHandlerByUrl(get_handlers, conn, payload);
+                executeGetHandlerByUrl(conn, payload);
                 //const char* body = "HELLO WORLD!\0";
                 //netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
                 break;

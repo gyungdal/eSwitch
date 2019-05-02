@@ -1,5 +1,5 @@
-#ifndef __TYPE_HPP__
-#define __TYPE_HPP__
+#ifndef __TYPE_H__
+#define __TYPE_H__
 
 #include "lwip/api.h"
 
