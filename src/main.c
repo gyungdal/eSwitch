@@ -93,20 +93,29 @@ static void http_server_netconn_serve(struct netconn *conn) {
     err = netconn_recv(conn, &inbuf);
 
     if (err == ERR_OK){
-        char *buf;
+        char *buf, *url, *payload;
         netbuf_data(inbuf, (void **)&buf, &buflen);
         char* start = strstr(buf, " ");
-        char* stop = strstr(start + 1, " ");
         char* middle = strstr(start + 1, "?");
+        if(middle != NULL){
+            char* stop = strstr(start + 1, " ");
 
-        char* payload = (char *)malloc(stop - middle + 1);
-        char* url = (char*)malloc(middle - start + 1);
-        
-        memcpy(payload, middle, stop - middle);
-        memcpy(url, start, middle - start);
-        
-        payload[stop - middle] = '\0';
-        url[middle - start] = '\0';
+            payload = (char *)malloc(stop - middle + 1);
+            url = (char*)malloc(middle - start + 1);
+            
+            memcpy(payload, middle, stop - middle);
+            memcpy(url, start, middle - start);
+            
+            payload[stop - middle] = '\0';
+            url[middle - start] = '\0';
+        }else{
+            //그냥 경로만 있는 경우
+            char* stop = strstr(start + 1, " ");
+            payload = NULL;
+            url = (char*)malloc(stop - start + 1);
+            memcpy(url, start, stop - start);    
+            url[stop - start] = '\0';
+        }
 
         switch(buf[0]) {
             case 'G' : {
@@ -124,8 +133,10 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 break;
             }
         }
-        free(payload);
-        free(url);
+        if(payload != NULL)
+            free(payload);
+        if(url != NULL)
+            free(url);
     }
     netconn_close(conn);
     netbuf_delete(inbuf);
