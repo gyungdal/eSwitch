@@ -20,28 +20,9 @@
 #include "../include/utils.h"
 #include "../include/type.h"
 #include "../include/handler.c"
-
-#define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
-#define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
-#define HDR_204 "HTTP/1.1 204 No Content\r\nContent-type: text/html\r\n\r\n"
-#define HDR_404 "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n"
-#define HDR_405 "HTTP/1.1 405 Method not allowed\r\nContent-type: text/html\r\n\r\n"
-#define HDR_409 "HTTP/1.1 409 Conflict\r\nContent-type: text/html\r\n\r\n"
-#define HDR_501 "HTTP/1.1 501 Not Implemented\r\nContent-type: text/html\r\n\r\n"
-
-#define WIFI_SSID "Gyeongsik's Wi-Fi Network"
-#define WIFI_PASS "gyungdal"
-
-const gpio_num_t GPIO_PINS[] = {GPIO_NUM_21, GPIO_NUM_22};
+#include "../include/config.h"
 
 static EventGroupHandle_t wifi_event_group;
-
-#define delay(ms) (vTaskDelay(ms / portTICK_RATE_MS))
-
-const int CONNECTED_BIT = BIT0;
-const int STATUS_BIT = BIT1;
-
-static const char *TAG = "eSwitch";
 
 static esp_err_t event_handler(void *ctx, system_event_t *event) {
     switch (event->event_id){
@@ -111,8 +92,6 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 ESP_LOGI(TAG, "[CLIENT GET LENGTH] %d", strlen(payload));
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
                 executeGetHandlerByUrl(conn, payload);
-                //const char* body = "HELLO WORLD!\0";
-                //netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
                 break;
             }
             default : {
@@ -149,6 +128,10 @@ static void http_server(void *pvParameters) {
     netconn_delete(conn);
 }
 
+static void gpio_handler(void* param){
+    
+}
+
 void app_main() {
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
@@ -159,4 +142,5 @@ void app_main() {
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
     xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
+    xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
 }
