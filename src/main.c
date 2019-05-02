@@ -124,9 +124,6 @@ static void http_server(void *pvParameters) {
     } while (err == ERR_OK);
     netconn_close(conn);
     netconn_delete(conn);
-}
-
-static void gpio_handler(void* param){
     if(xEventGroupGetBits(wifi_event_group) & NEED_REBOOT_BIT){
         ESP_LOGD(TAG, "[GPIO] Reboot Sequence");
         gpio_set_level(GPIO_PINS[0], LOW);
@@ -152,6 +149,4 @@ void app_main() {
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
     xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
-    xTaskCreate(&gpio_handler, "gpio_handler", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    vTaskStartScheduler();
 }
