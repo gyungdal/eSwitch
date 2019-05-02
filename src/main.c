@@ -19,6 +19,7 @@
 
 #include "../include/utils.hpp"
 #include "../include/type.hpp"
+#include "../include/handler.cpp"
 
 #define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
 #define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
@@ -112,8 +113,10 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-                
-                netconn_write(conn, "Hello World", sizeof("Hello World") - 1, NETCONN_NOCOPY);
+                url_handler_t* handler = findHandlerByUrl(get_handlers, url);
+                if(handler != NULL){
+                    handler->handler(conn, payload);
+                }
                 break;
             }
             default : {

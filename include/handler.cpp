@@ -16,13 +16,13 @@ url_handler_t get_handlers[] = {
     }
 };
 
-url_handler_t* findByUrl(url_handler_t* handlers, char* url){
+url_handler_t* findHandlerByUrl(url_handler_t* handlers, char* url){
     for(size_t i = 0;i<sizeof(handlers) / sizeof(handlers[0]);i++){
         if(strcmp(url, handlers[i].url) == 0){
             return &handlers[i];
         }
     }
-    return nullptr;
+    return NULL;
 }
  
 #endif
