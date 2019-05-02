@@ -8,7 +8,7 @@
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
 // x65599 hashing algorithm
-const unsigned long long Hash(const char* str){
+unsigned long long Hash(const char* str){
     unsigned long long hash = 0;
     while (*str){
         hash = 65599 * hash + str[0];

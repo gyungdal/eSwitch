@@ -151,6 +151,7 @@ void app_main() {
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
-    xTaskCreate(&http_server, "http_server", 3072, NULL, 2, NULL);
-    xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
+    xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
+    xTaskCreate(&gpio_handler, "gpio_handler", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    vTaskStartScheduler();
 }
