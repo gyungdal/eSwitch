@@ -128,26 +128,29 @@ static void http_server(void *pvParameters) {
 
 static void gpio_handler(void* param){
     if(xEventGroupGetBits(wifi_event_group) & NEED_REBOOT_BIT){
+        ESP_LOGD(TAG, "[GPIO] Reboot Sequence");
         gpio_set_level(GPIO_PINS[0], LOW);
         delay(5000);
         gpio_set_level(GPIO_PINS[0], HIGH);
+        ESP_LOGD(TAG, "[GPIO] Power OFF Command");
         delay(50);
         gpio_set_level(GPIO_PINS[0], LOW);
         delay(100);
         gpio_set_level(GPIO_PINS[0], HIGH);
+        ESP_LOGD(TAG, "[GPIO] Reboot Command");
         xEventGroupClearBits(wifi_event_group, NEED_REBOOT_BIT);
+        ESP_LOGD(TAG, "[BIT] Clear NEED_REBOOT_BIT");
     }
 }
 
 void app_main() {
     ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
-
     for (int i = 0; i < sizeof(GPIO_PINS) / sizeof(GPIO_PINS[0]); i++){
         gpio_pad_select_gpio(GPIO_PINS[i]);
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
-    xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
+    xTaskCreate(&http_server, "http_server", 3072, NULL, 1, NULL);
     xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
 }
