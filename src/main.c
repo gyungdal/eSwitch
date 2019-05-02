@@ -86,19 +86,26 @@ static void initialise_wifi(void) {
 
 static void http_server_netconn_serve(struct netconn *conn) {
     struct netbuf *inbuf;
-    char *buf, *payload, *start, *stop;
     u16_t buflen;
     err_t err;
 
     err = netconn_recv(conn, &inbuf);
 
     if (err == ERR_OK){
+        char *buf;
         netbuf_data(inbuf, (void **)&buf, &buflen);
-        start = strstr(buf, " ");
-        stop = strstr(start + 1, " ");
-        payload = (char *)malloc(stop - start + 1);
-        memcpy(payload, start, stop - start);
-        payload[stop - start] = '\0';
+        char* start = strstr(buf, " ");
+        char* stop = strstr(start + 1, " ");
+        char* middle = strstr(start + 1, "?");
+
+        char* payload = (char *)malloc(stop - middle + 1);
+        char* url = (char*)malloc(middle - start + 1);
+        
+        memcpy(payload, middle, stop - middle);
+        memcpy(url, start, middle - start);
+        
+        payload[stop - middle] = '\0';
+        url[middle - start] = '\0';
 
         switch(buf[0]) {
             case 'G' : {
@@ -115,6 +122,7 @@ static void http_server_netconn_serve(struct netconn *conn) {
             }
         }
         free(payload);
+        free(url);
     }
     netconn_close(conn);
     netbuf_delete(inbuf);
