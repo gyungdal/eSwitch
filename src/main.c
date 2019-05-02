@@ -135,8 +135,8 @@ static void gpio_handler(void* param){
         gpio_set_level(GPIO_PINS[0], LOW);
         delay(100);
         gpio_set_level(GPIO_PINS[0], HIGH);
+        xEventGroupClearBits(wifi_event_group, NEED_REBOOT_BIT);
     }
-    xEventGroupClearBits(wifi_event_group, NEED_REBOOT_BIT);
 }
 
 void app_main() {
