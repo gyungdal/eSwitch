@@ -10,7 +10,7 @@ typedef enum _gpio_status_t {
 
 typedef struct _url_handler_t {
     char* url;
-    void (*handler)(struct netconn* conn);
+    void (*handler)(struct netconn* conn, char* payload);
 } url_handler_t;
 
 #endif
