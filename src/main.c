@@ -127,6 +127,15 @@ static void http_server(void *pvParameters) {
 }
 
 static void gpio_handler(void* param){
+    if(xEventGroupGetBits(wifi_event_group) & NEED_REBOOT_BIT){
+        gpio_set_level(GPIO_PINS[0], LOW);
+        delay(5000);
+        gpio_set_level(GPIO_PINS[0], HIGH);
+        delay(50);
+        gpio_set_level(GPIO_PINS[0], LOW);
+        delay(100);
+        gpio_set_level(GPIO_PINS[0], HIGH);
+    }
     xEventGroupClearBits(wifi_event_group, NEED_REBOOT_BIT);
 }
 
@@ -140,5 +149,5 @@ void app_main() {
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
     xTaskCreate(&http_server, "http_server", 4096, NULL, 1, NULL);
-    //xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
+    xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
 }
