@@ -86,46 +86,32 @@ static void initialise_wifi(void) {
 }
 
 static void http_server_netconn_serve(struct netconn *conn) {
+    char *buf, *payload, *start, *stop;
     struct netbuf *inbuf;
     u16_t buflen;
     err_t err;
 
     err = netconn_recv(conn, &inbuf);
 
+    url = payload = NULL;
     if (err == ERR_OK){
-        char *buf, *url, *payload;
         netbuf_data(inbuf, (void **)&buf, &buflen);
-        char* start = strstr(buf, " ");
-        char* middle = strstr(start + 1, "?");
-        if(middle != NULL){
-            char* stop = strstr(start + 1, " ");
+        start = strstr(buf, " ");
+        stop = strstr(start + 1, " ");
 
-            payload = (char *)malloc(stop - middle + 1);
-            url = (char*)malloc(middle - start + 1);
+        payload = (char *)malloc(stop - start + 1);
+        memcpy(payload, start, stop - start);
             
-            memcpy(payload, middle, stop - middle);
-            memcpy(url, start, middle - start);
-            
-            payload[stop - middle] = '\0';
-            url[middle - start] = '\0';
-        }else{
-            //그냥 경로만 있는 경우
-            char* stop = strstr(start + 1, " ");
-            payload = NULL;
-            url = (char*)malloc(stop - start + 1);
-            memcpy(url, start, stop - start);    
-            url[stop - start] = '\0';
-        }
+        payload[stop - start] = '\0';
 
         switch(buf[0]) {
             case 'G' : {
                 //GET
                 ESP_LOGI(TAG, "[CLIENT GET] %s", payload);
                 netconn_write(conn, HDR_200, sizeof(HDR_200) - 1, NETCONN_NOCOPY);
-                url_handler_t* handler = findHandlerByUrl(get_handlers, url);
-                if(handler != NULL){
-                    handler->handler(conn, payload);
-                }
+                executeHandlerByUrl(get_handlers, conn, payload);
+                //const char* body = "HELLO WORLD!\0";
+                //netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
                 break;
             }
             default : {
@@ -133,10 +119,7 @@ static void http_server_netconn_serve(struct netconn *conn) {
                 break;
             }
         }
-        if(payload != NULL)
-            free(payload);
-        if(url != NULL)
-            free(url);
+        free(payload);
     }
     netconn_close(conn);
     netbuf_delete(inbuf);
