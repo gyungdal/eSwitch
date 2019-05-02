@@ -12,10 +12,20 @@ static void get_root_handler(struct netconn* conn, char* url, char* payload){
     netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
 }
 
+static void reboot_request_handler(struct netconn* conn, char* url, char* payload){
+    const char* body = "CONFIRM!\0";
+    netconn_write(conn, body, strlen(body) - 1, NETCONN_NOCOPY);
+    xEventGroupSetBits(wifi_event_group, NEED_REBOOT_BIT);
+}
+
 static url_handler_t get_handlers[] = {
     { 
         .url = "/",
         .handler = get_root_handler
+    },
+    {
+        .url = "/reboot",
+        .handler = reboot_request_handler
     }
 };
 

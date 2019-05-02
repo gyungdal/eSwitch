@@ -22,8 +22,6 @@
 #include "../include/handler.c"
 #include "../include/config.h"
 
-static EventGroupHandle_t wifi_event_group;
-
 static esp_err_t event_handler(void *ctx, system_event_t *event) {
     switch (event->event_id){
         case SYSTEM_EVENT_STA_START:
