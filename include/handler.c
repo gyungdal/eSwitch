@@ -45,7 +45,7 @@ err_t executeGetHandlerByUrl(struct netconn* conn, char* payload){
         memcpy(url, payload, len);
     }
     for(size_t i = 0;i < sizeof(get_handlers) / sizeof(get_handlers[0]);i++){
-        if(strncmp(url, get_handlers[i].url, strlen(url)) == 0){
+        if(!strcmp(url, get_handlers[i].url)){
             get_handlers[i].handler(conn, url, NULL);
         }
     }
