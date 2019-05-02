@@ -127,7 +127,19 @@ static void http_server(void *pvParameters) {
 }
 
 static void gpio_handler(void* param){
-    if(xEventGroupGetBits(wifi_event_group) & NEED_REBOOT_BIT){
+    EventBits_t uxBits;
+    const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS;
+
+    /* Wait a maximum of 100ms for either bit 0 or bit 4 to be set within
+    the event group.  Clear the bits before exiting. */
+    uxBits = xEventGroupWaitBits(
+                wifi_event_group,   /* The event group being tested. */
+                NEED_REBOOT_BIT, /* The bits within the event group to wait for. */
+                pdTRUE,        /* BIT_0 & BIT_4 should be cleared before returning. */
+                pdFALSE,       /* Don't wait for both bits, either bit will do. */
+                xTicksToWait );/* Wait a maximum of 100ms for either bit to be set. */
+
+    if(uxBits & NEED_REBOOT_BIT){
         ESP_LOGD(TAG, "[GPIO] Reboot Sequence");
         gpio_set_level(GPIO_PINS[0], LOW);
         delay(5000);
@@ -151,6 +163,6 @@ void app_main() {
         gpio_set_direction(GPIO_PINS[i], GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_PINS[i], HIGH);
     }
-    xTaskCreate(&http_server, "http_server", 3072, NULL, 1, NULL);
+    xTaskCreate(&http_server, "http_server", 3072, NULL, 2, NULL);
     xTaskCreate(&gpio_handler, "gpio_handler", 1024, NULL, 1, NULL);
 }
