@@ -47,10 +47,11 @@ err_t executeGetHandlerByUrl(struct netconn* conn, char* payload){
     for(size_t i = 0;i < sizeof(get_handlers) / sizeof(get_handlers[0]);i++){
         if(!strcmp(url, get_handlers[i].url)){
             get_handlers[i].handler(conn, url, NULL);
+            return (err_t)ESP_OK;
         }
     }
     free(url);
-    return ESP_ERR_NOT_FOUND;
+    return (err_t)ESP_ERR_NOT_FOUND;
 }
  
 #endif
